@@ -13,6 +13,7 @@ import rateLimiter from "./middlewares/rateLimit.js";
 import authRoutes from "./routes/authRoutes.js";
 import productRoutes from "./routes/productRoutes.js";
 import orderRoutes from "./routes/orderRoutes.js";
+import { sendEmail } from "./utils/sendEmail.js";
 
 dotenv.config();
 const app = express();
@@ -73,6 +74,8 @@ app.use((req, res, next) => {
   next();
 });
 
+
+
 /* =========================
    ✅ Rate limit (after CORS)
    ========================= */
@@ -87,6 +90,8 @@ app.use("/api/orders", orderRoutes);
 app.get("/health", (_req, res) => {
   res.json({ ok: true, env: process.env.NODE_ENV || "unknown" });
 });
+
+
 
 // 404 + Error handler
 app.use(notFound);
