@@ -20,7 +20,7 @@ const app = express();
 // DB
 await connectDB();
 
-// Trust proxy for Railway/Proxies (important for rate limit & secure cookies if needed)
+// Trust proxy (Railway/proxies)
 app.set("trust proxy", 1);
 
 // Security & utils
@@ -31,15 +31,53 @@ app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-// CORS (locked to frontend)
-app.use(
-  cors({
-    origin: process.env.FRONTEND_URL?.split(",") || "*",
-    credentials: true,
-  })
-);
+/* =========================
+   ✅ CORS (allowlist + preflight)
+   ========================= */
+const allowlist = (process.env.FRONTEND_URL || "")
+  .split(",")
+  .map(s => s.trim())
+  .filter(Boolean);
 
-// Global rate limit on write routes
+const corsOptions = {
+  origin(origin, cb) {
+    // Non-browser (no Origin) requests: allow
+    if (!origin) return cb(null, true);
+    // Exact match with allowlist
+    if (allowlist.includes(origin)) return cb(null, true);
+    return cb(new Error("Not allowed by CORS"));
+  },
+  credentials: true,
+};
+
+// Mount CORS BEFORE any rate-limiter or routes
+app.use(cors(corsOptions));
+// Preflight fast-track
+app.options("*", cors(corsOptions));
+
+// Optional: small fallback to always set Vary & headers when origin allowed
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (origin && allowlist.includes(origin)) {
+    res.header("Access-Control-Allow-Origin", origin);
+    res.header("Access-Control-Allow-Credentials", "true");
+  }
+  res.header("Vary", "Origin");
+  res.header(
+    "Access-Control-Allow-Headers",
+    "Origin, X-Requested-With, Content-Type, Accept, Authorization"
+  );
+  res.header(
+    "Access-Control-Allow-Methods",
+    "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+  );
+  if (req.method === "OPTIONS") return res.sendStatus(200);
+  next();
+});
+
+/* =========================
+   ✅ Rate limit (after CORS)
+   ========================= */
 app.use("/api", rateLimiter);
 
 // Routes
