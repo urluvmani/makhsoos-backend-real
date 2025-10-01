@@ -52,8 +52,6 @@ const corsOptions = {
 
 // Mount CORS BEFORE any rate-limiter or routes
 app.use(cors(corsOptions));
-// Preflight fast-track
-app.options("*", cors(corsOptions));
 
 // Optional: small fallback to always set Vary & headers when origin allowed
 app.use((req, res, next) => {
